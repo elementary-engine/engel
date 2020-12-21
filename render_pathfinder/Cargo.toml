@@ -1,0 +1,21 @@
+[package]
+name = "engel_render_pathfinder"
+version = "0.1.0"
+authors = [
+    "Alexander Mescheryakov <freecoder.xx@gmail.com>",
+    "Noogen Team <info.noogen@gmail.com>",
+]
+edition = "2018"
+license = "MIT"
+repository = "https://github.com/elementary-engine/engel"
+
+[dependencies]
+engel_core = { path = "../core" }
+pathfinder_content = "0.5"
+pathfinder_canvas = { version = "0.5", features = ["pf-text"] }
+pathfinder_gl = "0.5"
+pathfinder_simd = "0.5"
+pathfinder_renderer = "0.5"
+pathfinder_resources = "0.5"
+font-kit = "0.6"
+skribo = "0.1"

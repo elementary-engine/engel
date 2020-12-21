@@ -1,0 +1,17 @@
+[package]
+name = "examples"
+version = "0.1.0"
+authors = [
+    "Alexander Mescheryakov <freecoder.xx@gmail.com>",
+    "Noogen Team <info.noogen@gmail.com>",
+]
+edition = "2018"
+license = "MIT"
+repository = "https://github.com/elementary-engine/engel"
+publish = false
+
+[dependencies]
+chrono = "0.4"
+engel = { path = "../engel" }
+engel_controller_glutin = { path = "../controller_glutin" }
+engel_render_pathfinder = { path = "../render_pathfinder" }

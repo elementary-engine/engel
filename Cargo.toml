@@ -1,0 +1,9 @@
+[workspace]
+members = [
+    "engel",
+    "builder",
+    "core",
+    "controller_glutin",
+    "render_pathfinder",
+    "examples",
+]

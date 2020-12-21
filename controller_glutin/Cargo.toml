@@ -1,0 +1,16 @@
+[package]
+name = "engel_controller_glutin"
+version = "0.1.0"
+authors = [
+    "Alexander Mescheryakov <freecoder.xx@gmail.com>",
+    "Noogen Team <info.noogen@gmail.com>",
+]
+edition = "2018"
+license = "MIT"
+repository = "https://github.com/elementary-engine/engel"
+
+[dependencies]
+engel_core = { path = "../core" }
+glutin = "0.26"
+gl = "0.14"
+chrono = "0.4"

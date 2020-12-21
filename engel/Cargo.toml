@@ -1,0 +1,18 @@
+[package]
+name = "engel"
+version = "0.1.0"
+authors = [
+    "Alexander Mescheryakov <freecoder.xx@gmail.com>",
+    "Noogen Team <info.noogen@gmail.com>",
+]
+edition = "2018"
+license = "MIT"
+repository = "https://github.com/elementary-engine/engel"
+readme = "README.md"
+description = "The elementary engine for GUI applications and games"
+keywords = ["noogen", "simple", "game", "engine", "GUI"]
+categories = []
+
+[dependencies]
+engel_core = { path = "../core" }
+engel_builder = { path = "../builder" }

@@ -1,0 +1,12 @@
+[package]
+name = "engel_core"
+version = "0.1.0"
+authors = [
+    "Alexander Mescheryakov <freecoder.xx@gmail.com>",
+    "Noogen Team <info.noogen@gmail.com>",
+]
+edition = "2018"
+license = "MIT"
+repository = "https://github.com/elementary-engine/engel"
+
+[dependencies]
