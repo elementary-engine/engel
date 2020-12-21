@@ -1,148 +1,492 @@
 use std::{
+    borrow::Cow,
+    error::Error,
+    path::Path,
     thread,
     time::{Duration, Instant},
 };
 
 use engel_core::{controller, Color, Comp, KeyboardController, MouseController, Real, Render, SystemMessage};
 pub use gl;
-pub use glutin;
-use glutin::{
-    event::{ElementState, Event, KeyboardInput, MouseButton, MouseScrollDelta, VirtualKeyCode, WindowEvent},
-    event_loop::{ControlFlow, EventLoop},
-    window::WindowBuilder,
-    ContextBuilder, ContextError, CreationError, NotCurrent, PossiblyCurrent, WindowedContext,
+pub use glutin::{
+    self,
+    dpi::Pixel,
+    event_loop::ControlFlow,
+    monitor::{MonitorHandle, VideoMode},
+    window::{BadIcon, Fullscreen, Icon, WindowBuilder},
+    Api, Context, ContextBuilder, ContextError, CreationError, GlProfile, GlRequest, NotCurrent, Robustness, GL_CORE,
 };
+use glutin::{
+    dpi::{LogicalSize, PhysicalSize},
+    event::{ElementState, Event, KeyboardInput, MouseButton, MouseScrollDelta, VirtualKeyCode, WindowEvent},
+    event_loop::EventLoop,
+    PossiblyCurrent, WindowedContext,
+};
+use thiserror::Error;
+
+#[derive(Copy, Clone, Debug)]
+pub enum Buffering {
+    Single,
+    Double,
+    DoNotCare,
+}
+
+impl From<Buffering> for Option<bool> {
+    fn from(buffering: Buffering) -> Self {
+        match buffering {
+            Buffering::Single => Some(false),
+            Buffering::Double => Some(true),
+            Buffering::DoNotCare => None,
+        }
+    }
+}
+
+impl From<Option<bool>> for Buffering {
+    fn from(buffering: Option<bool>) -> Self {
+        match buffering {
+            Some(false) => Buffering::Single,
+            Some(true) => Buffering::Double,
+            None => Buffering::DoNotCare,
+        }
+    }
+}
+
+impl From<bool> for Buffering {
+    fn from(double_buffering: bool) -> Self {
+        Self::from(Some(double_buffering))
+    }
+}
+
+#[derive(Copy, Clone, Debug)]
+pub enum Acceleration {
+    Hardware,
+    Software,
+    DoNotCare,
+}
+
+impl From<Acceleration> for Option<bool> {
+    fn from(acceleration: Acceleration) -> Self {
+        match acceleration {
+            Acceleration::Software => Some(false),
+            Acceleration::Hardware => Some(true),
+            Acceleration::DoNotCare => None,
+        }
+    }
+}
+
+impl From<Option<bool>> for Acceleration {
+    fn from(acceleration: Option<bool>) -> Self {
+        match acceleration {
+            Some(false) => Acceleration::Software,
+            Some(true) => Acceleration::Hardware,
+            None => Acceleration::DoNotCare,
+        }
+    }
+}
+
+impl From<bool> for Acceleration {
+    fn from(acceleration: bool) -> Self {
+        Self::from(Some(acceleration))
+    }
+}
+
+#[derive(Debug, Error)]
+pub enum AppError<RE: Error> {
+    #[error("Create application window error: {:?}", .0)]
+    CreationError(#[from] CreationError),
+
+    #[error("Context manipulation error: {:?}", .0)]
+    ContextError(#[from] ContextError),
+
+    #[error("Renderer internal error: {:?}", .0)]
+    RendererError(RE),
+}
 
 pub enum AppState {
     Exit,
     Continue,
 }
 
-#[derive(Debug)]
-pub enum AppContext {
-    NotCurrent(Option<WindowedContext<NotCurrent>>),
-    PossiblyCurrent(Option<WindowedContext<PossiblyCurrent>>),
+struct Font<'a> {
+    name: Cow<'a, str>,
+    path: Cow<'a, Path>,
 }
 
-impl AppContext {
-    pub fn take_not_current(&mut self) -> Option<WindowedContext<NotCurrent>> {
-        match self {
-            AppContext::NotCurrent(context) => context.take(),
-            _ => None,
-        }
-    }
-
-    pub fn take_current(&mut self) -> Option<WindowedContext<PossiblyCurrent>> {
-        match self {
-            AppContext::PossiblyCurrent(context) => context.take(),
-            _ => None,
-        }
-    }
-
-    pub fn current(&self) -> Option<&WindowedContext<PossiblyCurrent>> {
-        match self {
-            AppContext::PossiblyCurrent(context) => context.as_ref(),
-            _ => None,
-        }
-    }
-}
-
-pub struct App<R: Render> {
-    event_loop: EventLoop<()>,
-    context: AppContext,
+pub struct App<'a, R> {
+    window_builder: WindowBuilder,
+    context_builder: ContextBuilder<'a, NotCurrent>,
     renderer: R,
     background_color: Color,
     exit_by_escape: bool,
+    font: Option<Font<'a>>,
 }
 
-#[derive(Debug)]
-pub enum AppError<RE> {
-    CreationError(CreationError),
-    ContextError(ContextError),
-    PossiblyCurrentContextNotExist,
-    RendererError(RE),
-    WindowNoLongerExists,
-    EventsLoopIsNone,
-}
-
-impl<RE> From<CreationError> for AppError<RE> {
-    fn from(from: CreationError) -> Self {
-        AppError::CreationError(from)
-    }
-}
-
-impl<RE> From<ContextError> for AppError<RE> {
-    fn from(from: ContextError) -> Self {
-        AppError::ContextError(from)
-    }
-}
-
-impl<R: Render + 'static> App<R> {
-    pub fn new(
-        window_builder: WindowBuilder, context_builder: ContextBuilder<NotCurrent>, renderer: R,
-    ) -> Result<Self, AppError<R::Error>> {
-        let event_loop = EventLoop::new();
-        let context = AppContext::NotCurrent(Some(context_builder.build_windowed(window_builder, &event_loop)?));
-        Ok(App {
-            event_loop,
-            context,
+impl<'a, R: Render + 'static> App<'a, R> {
+    #[inline]
+    pub fn new(renderer: R) -> Self {
+        App {
+            window_builder: WindowBuilder::new(),
+            context_builder: ContextBuilder::new(),
             renderer,
             background_color: Color::RGBA(0.8, 0.8, 0.8, 1.0),
             exit_by_escape: true,
-        })
+            font: None,
+        }
     }
 
+    /// Requests the window to be of specific dimensions.
+    ///
+    /// See [`glutin::window::Window::set_inner_size`] for details.
+    #[inline]
+    pub fn with_inner_size<P: Pixel>(mut self, width: P, height: P) -> Self {
+        self.window_builder.window.inner_size = Some(PhysicalSize::new(width, height).into());
+        self
+    }
+
+    /// Requests the window to be of specific dimensions.
+    ///
+    /// See [`glutin::window::Window::set_inner_size`] for details.
+    #[inline]
+    pub fn with_logical_inner_size<P: Pixel>(mut self, width: P, height: P) -> Self {
+        self.window_builder.window.inner_size = Some(LogicalSize::new(width, height).into());
+        self
+    }
+
+    /// Sets a minimum dimension size for the window.
+    ///
+    /// See [`glutin::window::Window::set_min_inner_size`] for details.
+    #[inline]
+    pub fn with_min_inner_size<P: Pixel>(mut self, width: P, height: P) -> Self {
+        self.window_builder.window.min_inner_size = Some(PhysicalSize::new(width, height).into());
+        self
+    }
+
+    /// Sets a minimum dimension size for the window.
+    ///
+    /// See [`glutin::window::Window::set_min_inner_size`] for details.
+    #[inline]
+    pub fn with_logical_min_inner_size<P: Pixel>(mut self, width: P, height: P) -> Self {
+        self.window_builder.window.min_inner_size = Some(LogicalSize::new(width, height).into());
+        self
+    }
+
+    /// Sets a maximum dimension size for the window.
+    ///
+    /// See [`glutin::window::Window::set_max_inner_size`] for details.
+    #[inline]
+    pub fn with_max_inner_size<P: Pixel>(mut self, width: P, height: P) -> Self {
+        self.window_builder.window.max_inner_size = Some(PhysicalSize::new(width, height).into());
+        self
+    }
+
+    /// Sets a maximum dimension size for the window.
+    ///
+    /// See [`glutin::window::Window::set_max_inner_size`] for details.
+    #[inline]
+    pub fn with_logical_max_inner_size<P: Pixel>(mut self, width: P, height: P) -> Self {
+        self.window_builder.window.max_inner_size = Some(LogicalSize::new(width, height).into());
+        self
+    }
+
+    /// Sets whether the window is resizable or not.
+    ///
+    /// See [`glutin::window::Window::set_resizable`] for details.
+    #[inline]
+    pub fn with_resizable(mut self, resizable: bool) -> Self {
+        self.window_builder.window.resizable = resizable;
+        self
+    }
+
+    /// Requests a specific title for the window.
+    ///
+    /// See [`glutin::window::Window::set_title`] for details.
+    #[inline]
+    pub fn with_title<T: Into<String>>(mut self, title: T) -> Self {
+        self.window_builder.window.title = title.into();
+        self
+    }
+
+    /// Sets the window fullscreen state.
+    ///
+    /// See [`glutin::window::Window::set_fullscreen`] for details.
+    #[inline]
+    pub fn with_fullscreen(mut self, fullscreen: Option<Fullscreen>) -> Self {
+        self.window_builder.window.fullscreen = fullscreen;
+        self
+    }
+
+    /// Requests maximized mode.
+    ///
+    /// See [`glutin::window::Window::set_maximized`] for details.
+    #[inline]
+    pub fn with_maximized(mut self, maximized: bool) -> Self {
+        self.window_builder.window.maximized = maximized;
+        self
+    }
+
+    /// Sets whether the window will be initially hidden or visible.
+    ///
+    /// See [`glutin::window::Window::set_visible`] for details.
+    #[inline]
+    pub fn with_visible(mut self, visible: bool) -> Self {
+        self.window_builder.window.visible = visible;
+        self
+    }
+
+    /// Sets whether the background of the window should be transparent.
+    #[inline]
+    pub fn with_transparent(mut self, transparent: bool) -> Self {
+        self.window_builder.window.transparent = transparent;
+        self
+    }
+
+    /// Sets whether the window should have a border, a title bar, etc.
+    ///
+    /// See [`glutin::window::Window::set_decorations`] for details.
+    #[inline]
+    pub fn with_decorations(mut self, decorations: bool) -> Self {
+        self.window_builder.window.decorations = decorations;
+        self
+    }
+
+    /// Sets whether or not the window will always be on top of other windows.
+    ///
+    /// See [`glutin::window::Window::set_always_on_top`] for details.
+    #[inline]
+    pub fn with_always_on_top(mut self, always_on_top: bool) -> Self {
+        self.window_builder.window.always_on_top = always_on_top;
+        self
+    }
+
+    /// Sets the window icon.
+    ///
+    /// See [`glutin::window::Window::set_window_icon`] for details.
+    #[inline]
+    pub fn with_window_icon(mut self, window_icon: Option<Icon>) -> Self {
+        self.window_builder.window.window_icon = window_icon;
+        self
+    }
+
+    /// Sets how the backend should choose the OpenGL API and version.
+    #[inline]
+    pub fn with_gl(mut self, request: GlRequest) -> Self {
+        self.context_builder.gl_attr.version = request;
+        self
+    }
+
+    /// Sets the desired OpenGL [`glutin::Context`] profile.
+    #[inline]
+    pub fn with_gl_profile(mut self, profile: GlProfile) -> Self {
+        self.context_builder.gl_attr.profile = Some(profile);
+        self
+    }
+
+    /// Sets the *debug* flag for the OpenGL [`glutin::Context`].
+    ///
+    /// The default value for this flag is `cfg!(debug_assertions)`, which means
+    /// that it's enabled when you run `cargo build` and disabled when you run
+    /// `cargo build --release`.
+    #[inline]
+    pub fn with_gl_debug_flag(mut self, flag: bool) -> Self {
+        self.context_builder.gl_attr.debug = flag;
+        self
+    }
+
+    /// Sets the robustness of the OpenGL [`glutin::Context`]. See the docs of
+    /// [`glutin::Robustness`].
+    #[inline]
+    pub fn with_gl_robustness(mut self, robustness: Robustness) -> Self {
+        self.context_builder.gl_attr.robustness = robustness;
+        self
+    }
+
+    /// Requests that the window has vsync enabled.
+    ///
+    /// By default, vsync is not enabled.
+    #[inline]
+    pub fn with_vsync(mut self, vsync: bool) -> Self {
+        self.context_builder.gl_attr.vsync = vsync;
+        self
+    }
+
+    /// Share the display lists with the given [`glutin::Context`].
+    #[inline]
+    pub fn with_shared_lists(mut self, other: &'a Context<NotCurrent>) -> Self {
+        self.context_builder.gl_attr = self.context_builder.gl_attr.map_sharing(|_| other);
+        self
+    }
+
+    /// Sets the multisampling level to request. A value of `0` indicates that
+    /// multisampling must not be enabled.
+    ///
+    /// # Panic
+    ///
+    /// Will panic if `samples` is not a power of two.
+    #[inline]
+    pub fn with_multisampling(mut self, samples: u16) -> Self {
+        self.context_builder.pf_reqs.multisampling = match samples {
+            0 => None,
+            _ => {
+                assert!(samples.is_power_of_two());
+                Some(samples)
+            }
+        };
+        self
+    }
+
+    /// Sets the number of bits in the depth buffer.
+    #[inline]
+    pub fn with_depth_buffer(mut self, bits: u8) -> Self {
+        self.context_builder.pf_reqs.depth_bits = Some(bits);
+        self
+    }
+
+    /// Sets the number of bits in the stencil buffer.
+    #[inline]
+    pub fn with_stencil_buffer(mut self, bits: u8) -> Self {
+        self.context_builder.pf_reqs.stencil_bits = Some(bits);
+        self
+    }
+
+    /// Sets the number of bits in the color buffer.
+    #[inline]
+    pub fn with_pixel_format(mut self, color_bits: u8, alpha_bits: u8) -> Self {
+        self.context_builder.pf_reqs.color_bits = Some(color_bits);
+        self.context_builder.pf_reqs.alpha_bits = Some(alpha_bits);
+        self
+    }
+
+    /// Request the backend to be stereoscopic.
+    #[inline]
+    pub fn with_stereoscopy(mut self) -> Self {
+        self.context_builder.pf_reqs.stereoscopy = true;
+        self
+    }
+
+    /// Sets whether sRGB should be enabled on the window.
+    ///
+    /// The default value is `true`.
+    #[inline]
+    pub fn with_srgb(mut self, enabled: bool) -> Self {
+        self.context_builder.pf_reqs.srgb = enabled;
+        self
+    }
+
+    /// Sets whether double buffering should be enabled.
+    ///
+    /// The default value is `Buffering::DoNotCare`.
+    ///
+    /// ## Platform-specific
+    ///
+    /// This option will be taken into account on the following platforms:
+    ///
+    ///   * MacOS
+    ///   * Unix operating systems using GLX with X
+    ///   * Windows using WGL
+    #[inline]
+    pub fn with_double_buffer<T: Into<Buffering>>(mut self, buffering: T) -> Self {
+        self.context_builder.pf_reqs.double_buffer = buffering.into().into();
+        self
+    }
+
+    /// Sets whether hardware acceleration is required.
+    ///
+    /// The default value is `Acceleration::Hardware`
+    ///
+    /// ## Platform-specific
+    ///
+    /// This option will be taken into account on the following platforms:
+    ///
+    ///   * MacOS
+    ///   * Unix operating systems using EGL with either X or Wayland
+    ///   * Windows using EGL or WGL
+    ///   * Android using EGL
+    #[inline]
+    pub fn with_hardware_acceleration<T: Into<Acceleration>>(mut self, acceleration: T) -> Self {
+        self.context_builder.pf_reqs.hardware_accelerated = acceleration.into().into();
+        self
+    }
+
+    #[inline]
+    pub fn with_window_builder(mut self, window_builder: WindowBuilder) -> Self {
+        self.window_builder = window_builder;
+        self
+    }
+
+    #[inline]
+    pub fn with_context_builder(mut self, context_builder: ContextBuilder<'a, NotCurrent>) -> Self {
+        self.context_builder = context_builder;
+        self
+    }
+
+    #[inline]
     pub fn with_background_color(mut self, color: Color) -> Self {
         self.background_color = color;
         self
     }
 
+    #[inline]
     pub fn with_exit_by_escape(mut self, exit: bool) -> Self {
         self.exit_by_escape = exit;
         self
     }
 
-    pub fn init(&mut self) -> Result<&mut Self, AppError<R::Error>> {
-        if let Some(context) = self.context.take_not_current() {
-            let context = unsafe { context.make_current().map_err(|(_, err)| err)? };
-            self.context = AppContext::PossiblyCurrent(Some(context));
-        }
-        let context = self.context.current().ok_or(AppError::PossiblyCurrentContextNotExist)?;
+    #[inline]
+    pub fn with_font<N: Into<Cow<'a, str>>, P: Into<Cow<'a, Path>>>(mut self, name: N, path: P) -> Self {
+        self.font = Some(Font {
+            name: name.into(),
+            path: path.into(),
+        });
+        self
+    }
+
+    #[inline]
+    pub fn renderer(&self) -> &R {
+        &self.renderer
+    }
+
+    #[inline]
+    pub fn renderer_mut(&mut self) -> &mut R {
+        &mut self.renderer
+    }
+
+    #[inline]
+    pub fn run(self, comp: Comp) -> Result<(), AppError<R::Error>> {
+        self.run_with_prerender(comp, |_, _, _| AppState::Continue)
+    }
+
+    pub fn run_with_prerender(
+        self, mut comp: Comp,
+        mut redraw_hook: impl FnMut(&mut Comp, &WindowedContext<PossiblyCurrent>, &mut R) -> AppState + 'static,
+    ) -> Result<(), AppError<R::Error>> {
+        let App {
+            window_builder,
+            context_builder,
+            mut renderer,
+            background_color,
+            exit_by_escape,
+            font,
+        } = self;
+
+        let event_loop = EventLoop::new();
+        let context = context_builder.build_windowed(window_builder, &event_loop)?;
+        let context = unsafe { context.make_current().map_err(|(_, err)| err)? };
 
         unsafe {
             gl::load_with(|symbol| context.get_proc_address(symbol) as *const _);
-            let color = self.background_color.as_arr();
+            let color = background_color.as_arr();
             gl::ClearColor(color[0], color[1], color[2], color[3]);
         }
 
         let size = context.window().inner_size();
-        self.renderer
-            .set_dimensions(size.width, size.height, context.window().scale_factor());
-        self.renderer
-            .init(self.background_color)
-            .map_err(AppError::RendererError)?;
-        Ok(self)
-    }
+        renderer.set_dimensions(size.width, size.height, context.window().scale_factor());
+        renderer.init(self.background_color).map_err(AppError::RendererError)?;
+        if let Some(Font { name, path }) = font {
+            renderer.load_font(name, path).map_err(AppError::RendererError)?;
+        }
 
-    #[inline]
-    pub fn run(self, comp: Comp) -> ! {
-        self.run_proc(comp, |_, _, _| AppState::Continue)
-    }
-
-    pub fn run_proc(
-        self, mut comp: Comp,
-        mut proc: impl FnMut(&mut Comp, &WindowedContext<PossiblyCurrent>, &mut R) -> AppState + 'static,
-    ) -> ! {
-        let App {
-            event_loop,
-            mut context,
-            mut renderer,
-            exit_by_escape,
-            ..
-        } = self;
         let mut mouse_controller = MouseController::new();
         let keyboard_controller = KeyboardController::new();
-        let context = context.take_current().expect("PossiblyCurrent context does not exist"); //ok_or(AppError::PossiblyCurrentContextNotExist)?;
         let mut last_time = Instant::now();
 
         event_loop.run(move |event, _, control_flow| {
@@ -217,7 +561,7 @@ impl<R: Render + 'static> App<R> {
                         gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT | gl::STENCIL_BUFFER_BIT);
                     }
 
-                    if let AppState::Exit = proc(&mut comp, &context, &mut renderer) {
+                    if let AppState::Exit = redraw_hook(&mut comp, &context, &mut renderer) {
                         *control_flow = ControlFlow::Exit;
                         return;
                     }
@@ -237,18 +581,6 @@ impl<R: Render + 'static> App<R> {
                 _ => (),
             }
         })
-    }
-
-    pub fn context(&self) -> &AppContext {
-        &self.context
-    }
-
-    pub fn renderer(&self) -> &R {
-        &self.renderer
-    }
-
-    pub fn renderer_mut(&mut self) -> &mut R {
-        &mut self.renderer
     }
 }
 

@@ -14,3 +14,4 @@ engel_core = { path = "../core" }
 glutin = "0.26"
 gl = "0.14"
 chrono = "0.4"
+thiserror = "1.0"

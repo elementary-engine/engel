@@ -4,7 +4,7 @@ use engel::{
     builder::*, Animate, ChangeView, Color, Comp, LineCap, LineJoin, Model, Node, PathCommand::*, Pct, Real, Shaped,
     Stroke, SystemMessage, Transform, VirtualKeyCode,
 };
-use engel_controller_glutin::{glutin, App};
+use engel_controller_glutin::App;
 use engel_render_pathfinder::PathfinderRender as Render;
 
 use self::levels::{Cell, Level};
@@ -586,28 +586,20 @@ impl Game {
     }
 }
 
-fn main() {
-    let mut app = App::new(
-        glutin::window::WindowBuilder::new()
-            .with_title("ExGUI Sokoban")
-            .with_inner_size(glutin::dpi::PhysicalSize::new(Canvas::WIDTH, Canvas::HEIGHT)),
-        glutin::ContextBuilder::new()
-            .with_vsync(true)
-            .with_double_buffer(Some(true))
-            .with_multisampling(8)
-            .with_srgb(true),
-        Render::default(),
-    )
-    .unwrap();
-    app.init().unwrap();
-
-    let font_path = env::current_dir()
-        .unwrap()
+fn main() -> anyhow::Result<()> {
+    let font_path = env::current_dir()?
         .join("examples")
         .join("resources")
         .join("Roboto-Regular.ttf");
-    app.renderer_mut().load_font("Roboto-Regular", font_path).unwrap();
 
-    let comp = Comp::new(Game::create(()));
-    app.run(comp);
+    App::new(Render::default())
+        .with_title("Sokoban example")
+        .with_inner_size(Canvas::WIDTH, Canvas::HEIGHT)
+        .with_vsync(true)
+        .with_double_buffer(true)
+        .with_multisampling(8)
+        .with_srgb(true)
+        .with_font("Roboto-Regular", font_path)
+        .run(Comp::new(Game::create(())))
+        .map_err(Into::into)
 }

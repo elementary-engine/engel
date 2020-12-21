@@ -31,6 +31,7 @@ use pathfinder_renderer::{
 use pathfinder_resources::embedded::EmbeddedResourceLoader;
 use pathfinder_simd::default::F32x2;
 use skribo::TextStyle;
+use thiserror::Error;
 
 const PI_2: f32 = std::f32::consts::PI * 2.0;
 
@@ -65,9 +66,12 @@ impl Mul<BoundingBox> for TransformMatrix {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Error)]
 pub enum PathfinderRenderError {
+    #[error("Context is not initialized")]
     ContextIsNotInit,
+
+    #[error("Create font error for path: {}, {:?}", .1, .0)]
     CreateFontError(io::Error, String),
 }
 
@@ -117,6 +121,22 @@ impl Render for PathfinderRender {
                 font_handles: vec![],
             });
         }
+        Ok(())
+    }
+
+    fn load_font(&mut self, _name: impl AsRef<str>, path: impl AsRef<Path>) -> Result<(), Self::Error> {
+        let context = self.context.as_mut().ok_or(PathfinderRenderError::ContextIsNotInit)?;
+
+        let display_path = path.as_ref().display();
+        let mut font_file_data = vec![];
+        File::open(&path)
+            .and_then(|mut file| file.read_to_end(&mut font_file_data))
+            .map_err(|err| PathfinderRenderError::CreateFontError(err, format!("{}", display_path)))?;
+        context
+            .font_handles
+            .push(Handle::from_memory(Arc::new(font_file_data), 0));
+        context.font_context = CanvasFontContext::from_fonts(context.font_handles.clone().into_iter());
+
         Ok(())
     }
 
@@ -185,22 +205,6 @@ impl PathfinderRender {
         let mut render = Self::default();
         render.set_dimensions(physical_width, physical_height, 1.0);
         render
-    }
-
-    pub fn load_font(&mut self, _name: impl AsRef<str>, path: impl AsRef<Path>) -> Result<(), <Self as Render>::Error> {
-        let context = self.context.as_mut().ok_or(PathfinderRenderError::ContextIsNotInit)?;
-
-        let display_path = path.as_ref().display();
-        let mut font_file_data = vec![];
-        File::open(&path)
-            .and_then(|mut file| file.read_to_end(&mut font_file_data))
-            .map_err(|err| PathfinderRenderError::CreateFontError(err, format!("{}", display_path)))?;
-        context
-            .font_handles
-            .push(Handle::from_memory(Arc::new(font_file_data), 0));
-        context.font_context = CanvasFontContext::from_fonts(context.font_handles.clone().into_iter());
-
-        Ok(())
     }
 
     fn recalc_composite(

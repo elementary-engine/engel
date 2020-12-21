@@ -307,12 +307,9 @@ mod tests {
     #[test]
     fn test_transform() {
         // Contructors
-        trans_eq!(
-            TransformMatrix::identity(),
-            TransformMatrix {
-                matrix: [1.0, 0.0, 0.0, 1.0, 0.0, 0.0],
-            }
-        );
+        trans_eq!(TransformMatrix::identity(), TransformMatrix {
+            matrix: [1.0, 0.0, 0.0, 1.0, 0.0, 0.0],
+        });
 
         trans_eq!(
             TransformMatrix::identity().with_translation(11.1, 22.2),
@@ -321,27 +318,18 @@ mod tests {
             }
         );
 
-        trans_eq!(
-            TransformMatrix::identity().with_scale(11.1, 22.2),
-            TransformMatrix {
-                matrix: [11.1, 0.0, 0.0, 22.2, 0.0, 0.0],
-            }
-        );
+        trans_eq!(TransformMatrix::identity().with_scale(11.1, 22.2), TransformMatrix {
+            matrix: [11.1, 0.0, 0.0, 22.2, 0.0, 0.0],
+        });
 
-        trans_eq!(
-            TransformMatrix::identity().with_skew(11.1, 22.2),
-            TransformMatrix {
-                matrix: [1.0, 22.2, 11.1, 1.0, 0.0, 0.0],
-            }
-        );
+        trans_eq!(TransformMatrix::identity().with_skew(11.1, 22.2), TransformMatrix {
+            matrix: [1.0, 22.2, 11.1, 1.0, 0.0, 0.0],
+        });
 
         let angle = 90_f32.to_radians();
-        trans_eq!(
-            TransformMatrix::identity().with_rotation(angle),
-            TransformMatrix {
-                matrix: [angle.cos(), angle.sin(), -angle.sin(), angle.cos(), 0.0, 0.0],
-            }
-        );
+        trans_eq!(TransformMatrix::identity().with_rotation(angle), TransformMatrix {
+            matrix: [angle.cos(), angle.sin(), -angle.sin(), angle.cos(), 0.0, 0.0],
+        });
 
         // Multiplication
         let identity = TransformMatrix::identity();

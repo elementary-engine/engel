@@ -11,7 +11,11 @@ repository = "https://github.com/elementary-engine/engel"
 publish = false
 
 [dependencies]
-chrono = "0.4"
 engel = { path = "../engel" }
 engel_controller_glutin = { path = "../controller_glutin" }
 engel_render_pathfinder = { path = "../render_pathfinder" }
+chrono = "0.4"
+anyhow = "1.0"
+
+[profile.release]
+lto = true
