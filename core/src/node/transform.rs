@@ -50,11 +50,11 @@ impl Transform {
             Transform::Calculated { local: Some(local), .. } => {
                 modifier(local);
                 *self = Transform::Local(*local);
-            }
+            },
             Transform::Calculated { global, .. } => {
                 modifier(global);
                 *self = Transform::Global(*global);
-            }
+            },
         }
     }
 

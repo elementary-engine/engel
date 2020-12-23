@@ -71,7 +71,7 @@ impl UpdateView {
                 } else {
                     UpdateView::Recalc
                 }
-            }
+            },
             UpdateView::RecalcAndRedraw => UpdateView::RecalcAndRedraw,
             UpdateView::None => other,
         }
@@ -172,6 +172,12 @@ impl CompositeShape for Comp {
 
     fn need_redraw(&self) -> Option<bool> {
         Some(self.inner.need_redraw())
+    }
+}
+
+impl<M: Model> From<M> for Comp {
+    fn from(model: M) -> Self {
+        Self::new(model)
     }
 }
 

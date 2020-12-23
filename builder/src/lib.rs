@@ -144,7 +144,10 @@ impl<M: Model> Primitive<M> for CircleBuilder<M> {
     }
 
     fn clip(
-        mut self, x: impl Into<RealValue>, y: impl Into<RealValue>, width: impl Into<RealValue>,
+        mut self,
+        x: impl Into<RealValue>,
+        y: impl Into<RealValue>,
+        width: impl Into<RealValue>,
         height: impl Into<RealValue>,
     ) -> Self {
         self.shape.clip = Clip::new_scissor(x.into(), y.into(), width.into(), height.into());
@@ -344,7 +347,10 @@ impl<M: Model> Primitive<M> for RectBuilder<M> {
     }
 
     fn clip(
-        mut self, x: impl Into<RealValue>, y: impl Into<RealValue>, width: impl Into<RealValue>,
+        mut self,
+        x: impl Into<RealValue>,
+        y: impl Into<RealValue>,
+        width: impl Into<RealValue>,
         height: impl Into<RealValue>,
     ) -> Self {
         self.shape.clip = Clip::new_scissor(x.into(), y.into(), width.into(), height.into());
@@ -460,7 +466,10 @@ impl<M: Model> Primitive<M> for TextBuilder<M> {
     }
 
     fn clip(
-        mut self, x: impl Into<RealValue>, y: impl Into<RealValue>, width: impl Into<RealValue>,
+        mut self,
+        x: impl Into<RealValue>,
+        y: impl Into<RealValue>,
+        width: impl Into<RealValue>,
         height: impl Into<RealValue>,
     ) -> Self {
         self.shape.clip = Clip::new_scissor(x.into(), y.into(), width.into(), height.into());
@@ -555,7 +564,10 @@ impl<M: Model> Primitive<M> for PathBuilder<M> {
     }
 
     fn clip(
-        mut self, x: impl Into<RealValue>, y: impl Into<RealValue>, width: impl Into<RealValue>,
+        mut self,
+        x: impl Into<RealValue>,
+        y: impl Into<RealValue>,
+        width: impl Into<RealValue>,
         height: impl Into<RealValue>,
     ) -> Self {
         self.shape.clip = Clip::new_scissor(x.into(), y.into(), width.into(), height.into());
@@ -647,7 +659,10 @@ impl<M: Model> Primitive<M> for GroupBuilder<M> {
     }
 
     fn clip(
-        mut self, x: impl Into<RealValue>, y: impl Into<RealValue>, width: impl Into<RealValue>,
+        mut self,
+        x: impl Into<RealValue>,
+        y: impl Into<RealValue>,
+        width: impl Into<RealValue>,
         height: impl Into<RealValue>,
     ) -> Self {
         self.shape.clip = Clip::new_scissor(x.into(), y.into(), width.into(), height.into());

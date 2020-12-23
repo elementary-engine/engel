@@ -208,8 +208,11 @@ impl PathfinderRender {
     }
 
     fn recalc_composite(
-        canvas: &mut CanvasRenderingContext2D, composite: &mut dyn CompositeShape, parent_bound: BoundingBox,
-        mut parent_global_transform: TransformMatrix, defaults: &mut ShapeDefaults,
+        canvas: &mut CanvasRenderingContext2D,
+        composite: &mut dyn CompositeShape,
+        parent_bound: BoundingBox,
+        mut parent_global_transform: TransformMatrix,
+        defaults: &mut ShapeDefaults,
     ) -> BoundingBox {
         let mut bound = parent_bound;
 
@@ -245,7 +248,7 @@ impl PathfinderRender {
                         max_x: rect.x.val() + rect.width.val(),
                         max_y: rect.y.val() + rect.height.val(),
                     };
-                }
+                },
                 Shape::Circle(circle) => {
                     if circle.cx.set_by_pct(parent_bound.width()) {
                         circle.cx.0 += parent_bound.min_x;
@@ -269,7 +272,7 @@ impl PathfinderRender {
                         max_x: cx + r,
                         max_y: cy + r,
                     };
-                }
+                },
                 Shape::Text(text) => {
                     if text.x.set_by_pct(parent_bound.width()) {
                         text.x.0 += parent_bound.min_x;
@@ -330,11 +333,11 @@ impl PathfinderRender {
                         max_x: text.x.val() + text.glyph_positions.last().map(|pos| pos.max_x()).unwrap_or(0.0),
                         max_y: text.y.val() + line_height,
                     };
-                }
+                },
                 Shape::Path(path) => {
                     Self::set_by_pct_clip(&mut path.clip, &parent_bound);
                     parent_global_transform = path.recalculate_transform(parent_global_transform);
-                }
+                },
                 Shape::Group(group) => {
                     Self::set_by_pct_clip(&mut group.clip, &parent_bound);
                     parent_global_transform = group.recalculate_transform(parent_global_transform);
@@ -351,7 +354,7 @@ impl PathfinderRender {
                     if !group.clip.is_none() {
                         defaults.clip = group.clip;
                     }
-                }
+                },
             }
         }
 
@@ -373,7 +376,7 @@ impl PathfinderRender {
                         max_x: rect.x.val() + rect.width.val(),
                         max_y: rect.y.val() + rect.height.val(),
                     };
-                }
+                },
                 Shape::Circle(circle) => {
                     circle.cx.set_by_auto(inner_bound.min_x + inner_bound.width() / 2.0);
                     circle.cy.set_by_auto(inner_bound.min_y + inner_bound.height() / 2.0);
@@ -390,7 +393,7 @@ impl PathfinderRender {
                         max_x: cx + r,
                         max_y: cy + r,
                     };
-                }
+                },
                 Shape::Text(text) => {
                     let transform = text.transform.matrix();
                     let inner_bound_points = transform * inner_bound;
@@ -406,7 +409,7 @@ impl PathfinderRender {
                         bound.min_y = bound.min_y.min(bound_points[idx].1).min(inner_bound_points[idx].1);
                         bound.max_y = bound.max_y.max(bound_points[idx].1).max(inner_bound_points[idx].1);
                     }
-                }
+                },
                 _ => (),
             }
         }
@@ -414,8 +417,11 @@ impl PathfinderRender {
     }
 
     fn calc_inner_bound(
-        canvas: &mut CanvasRenderingContext2D, composite: &mut dyn CompositeShape, bound: BoundingBox,
-        parent_global_transform: TransformMatrix, defaults: &mut ShapeDefaults,
+        canvas: &mut CanvasRenderingContext2D,
+        composite: &mut dyn CompositeShape,
+        bound: BoundingBox,
+        parent_global_transform: TransformMatrix,
+        defaults: &mut ShapeDefaults,
     ) -> BoundingBox {
         let mut child_bounds = Vec::new();
         if let Some(children) = composite.children_mut() {
@@ -453,7 +459,9 @@ impl PathfinderRender {
     }
 
     fn render_composite<'a>(
-        canvas: &mut CanvasRenderingContext2D, composite: &'a dyn CompositeShape, mut text: Option<&'a Text>,
+        canvas: &mut CanvasRenderingContext2D,
+        composite: &'a dyn CompositeShape,
+        mut text: Option<&'a Text>,
         defaults: &mut ShapeDefaults,
     ) {
         canvas.save();
@@ -479,7 +487,7 @@ impl PathfinderRender {
                         Self::set_stroke_option(canvas, stroke);
                         canvas.stroke_path(rect_path);
                     }
-                }
+                },
                 Shape::Circle(circle) => {
                     let center = Vector2F::new(circle.cx.val(), circle.cy.val());
                     let axes = Vector2F::new(circle.r.val(), circle.r.val());
@@ -498,7 +506,7 @@ impl PathfinderRender {
                         Self::set_stroke_option(canvas, stroke);
                         canvas.stroke_path(circle_path);
                     }
-                }
+                },
                 Shape::Path(path) => {
                     use engel_core::PathCommand::*;
 
@@ -511,58 +519,58 @@ impl PathfinderRender {
                             Move(ref xy) => {
                                 last_xy = Vector2F::new(xy[0], xy[1]);
                                 draw_path.move_to(last_xy);
-                            }
+                            },
                             MoveRel(ref xy) => {
                                 last_xy = Vector2F::new(last_xy.x() + xy[0], last_xy.y() + xy[1]);
                                 draw_path.move_to(last_xy);
-                            }
+                            },
                             Line(ref xy) => {
                                 last_xy = Vector2F::new(xy[0], xy[1]);
                                 draw_path.line_to(last_xy);
-                            }
+                            },
                             LineRel(ref xy) => {
                                 last_xy = Vector2F::new(last_xy.x() + xy[0], last_xy.y() + xy[1]);
                                 draw_path.line_to(last_xy);
-                            }
+                            },
                             LineAlonX(ref x) => {
                                 last_xy.set_x(*x);
                                 draw_path.line_to(last_xy);
-                            }
+                            },
                             LineAlonXRel(ref x) => {
                                 last_xy.set_x(last_xy.x() + *x);
                                 draw_path.line_to(last_xy);
-                            }
+                            },
                             LineAlonY(ref y) => {
                                 last_xy.set_y(*y);
                                 draw_path.line_to(last_xy);
-                            }
+                            },
                             LineAlonYRel(ref y) => {
                                 last_xy.set_y(last_xy.y() + *y);
                                 draw_path.line_to(last_xy);
-                            }
+                            },
                             Close => draw_path.close_path(),
                             BezCtrl(ref xy) => {
                                 bez_ctrls = [bez_ctrls[1], Vector2F::new(xy[0], xy[1])];
-                            }
+                            },
                             BezCtrlRel(ref xy) => {
                                 bez_ctrls = [bez_ctrls[1], Vector2F::new(last_xy.x() + xy[0], last_xy.y() + xy[1])];
-                            }
+                            },
                             QuadBezTo(ref xy) => {
                                 last_xy = Vector2F::new(xy[0], xy[1]);
                                 draw_path.quadratic_curve_to(bez_ctrls[1], last_xy);
-                            }
+                            },
                             QuadBezToRel(ref xy) => {
                                 last_xy = Vector2F::new(last_xy.x() + xy[0], last_xy.y() + xy[1]);
                                 draw_path.quadratic_curve_to(bez_ctrls[1], last_xy);
-                            }
+                            },
                             CubBezTo(ref xy) => {
                                 last_xy = Vector2F::new(xy[0], xy[1]);
                                 draw_path.bezier_curve_to(bez_ctrls[0], bez_ctrls[1], last_xy);
-                            }
+                            },
                             CubBezToRel(ref xy) => {
                                 last_xy = Vector2F::new(last_xy.x() + xy[0], last_xy.y() + xy[1]);
                                 draw_path.bezier_curve_to(bez_ctrls[0], bez_ctrls[1], last_xy);
-                            }
+                            },
                             _ => panic!("Not impl rendering cmd {:?}", cmd), // TODO: need refl impl
                         }
                     }
@@ -576,7 +584,7 @@ impl PathfinderRender {
                         Self::set_stroke_option(canvas, stroke);
                         canvas.stroke_path(draw_path);
                     }
-                }
+                },
                 Shape::Text(this_text) => {
                     text = Some(this_text);
 
@@ -591,7 +599,7 @@ impl PathfinderRender {
                         Self::set_stroke_option(canvas, stroke);
                         canvas.stroke_text(&this_text.content, pos);
                     }
-                }
+                },
                 Shape::Group(group) => {
                     if let Some(transparency) = group.transparency {
                         defaults.transparency = transparency;
@@ -605,7 +613,7 @@ impl PathfinderRender {
                     if !group.clip.is_none() {
                         defaults.clip = group.clip;
                     }
-                }
+                },
             }
         }
         canvas.restore();
@@ -671,13 +679,16 @@ impl PathfinderRender {
                 let mut clip_path = Path2D::new();
                 clip_path.rect(clip_rect);
                 Some(clip_path)
-            }
+            },
             Clip::None => None,
         }
     }
 
     fn set_path_options(
-        canvas: &mut CanvasRenderingContext2D, transparency: Real, clip: Clip, transform: &Transform,
+        canvas: &mut CanvasRenderingContext2D,
+        transparency: Real,
+        clip: Clip,
+        transform: &Transform,
         defaults: &ShapeDefaults,
     ) {
         let transparency = if transparency != 0.0 {
@@ -801,7 +812,7 @@ impl ToPathfinderPaint {
                 gradient.add_color_stop(Self::convert_color(start_color).to_u8(), 0.0);
                 gradient.add_color_stop(Self::convert_color(end_color).to_u8(), 1.0);
                 gradient
-            }
+            },
             Gradient::Box { .. } => todo!("The Box gradient is not support"),
             Gradient::Radial {
                 center: (x, y),
@@ -815,7 +826,7 @@ impl ToPathfinderPaint {
                 gradient.add_color_stop(Self::convert_color(start_color).to_u8(), 0.0);
                 gradient.add_color_stop(Self::convert_color(end_color).to_u8(), 1.0);
                 gradient
-            }
+            },
         }
     }
 

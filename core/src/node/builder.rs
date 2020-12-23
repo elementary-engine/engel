@@ -26,7 +26,10 @@ pub trait Primitive<M: Model> {
     fn remove_stroke(self) -> Self;
     fn remove_fill(self) -> Self;
     fn clip(
-        self, x: impl Into<RealValue>, y: impl Into<RealValue>, width: impl Into<RealValue>,
+        self,
+        x: impl Into<RealValue>,
+        y: impl Into<RealValue>,
+        width: impl Into<RealValue>,
         height: impl Into<RealValue>,
     ) -> Self;
 }

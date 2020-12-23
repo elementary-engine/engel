@@ -55,7 +55,7 @@ impl Text {
 
     #[inline]
     pub fn intersect(&self, _x: Real, _y: Real) -> bool {
-        // TODO: calvulate intersect
+        // TODO: calculate intersect
         false
     }
 

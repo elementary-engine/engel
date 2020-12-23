@@ -329,7 +329,7 @@ impl<'a, R: Render + 'static> App<'a, R> {
             _ => {
                 assert!(samples.is_power_of_two());
                 Some(samples)
-            }
+            },
         };
         self
     }
@@ -451,14 +451,16 @@ impl<'a, R: Render + 'static> App<'a, R> {
     }
 
     #[inline]
-    pub fn run(self, comp: Comp) -> Result<(), AppError<R::Error>> {
+    pub fn run(self, comp: impl Into<Comp>) -> Result<(), AppError<R::Error>> {
         self.run_with_prerender(comp, |_, _, _| AppState::Continue)
     }
 
     pub fn run_with_prerender(
-        self, mut comp: Comp,
+        self,
+        comp: impl Into<Comp>,
         mut redraw_hook: impl FnMut(&mut Comp, &WindowedContext<PossiblyCurrent>, &mut R) -> AppState + 'static,
     ) -> Result<(), AppError<R::Error>> {
+        let mut comp = comp.into();
         let App {
             window_builder,
             context_builder,
@@ -501,13 +503,13 @@ impl<'a, R: Render + 'static> App<'a, R> {
                             width: size.width,
                             height: size.height,
                         });
-                    }
+                    },
                     WindowEvent::CloseRequested => {
                         *control_flow = ControlFlow::Exit;
-                    }
+                    },
                     WindowEvent::ReceivedCharacter(ch) => {
                         keyboard_controller.input_char(&mut comp, ch);
-                    }
+                    },
                     WindowEvent::KeyboardInput {
                         input:
                             KeyboardInput {
@@ -517,7 +519,7 @@ impl<'a, R: Render + 'static> App<'a, R> {
                         ..
                     } if exit_by_escape => {
                         *control_flow = ControlFlow::Exit;
-                    }
+                    },
                     WindowEvent::KeyboardInput { input, .. } => {
                         let KeyboardInput {
                             scancode,
@@ -532,28 +534,28 @@ impl<'a, R: Render + 'static> App<'a, R> {
                             keyboard_controller
                                 .released_comp(&mut comp, convert_keyboard_event(scancode, virtual_keycode));
                         }
-                    }
+                    },
                     WindowEvent::CursorMoved { position, .. } => {
                         mouse_controller.update_pos(position.x as Real, position.y as Real);
-                    }
+                    },
                     WindowEvent::MouseInput {
                         state: ElementState::Pressed,
                         button,
                         ..
                     } => {
                         mouse_controller.pressed_comp(&mut comp, convert_mouse_button(button));
-                    }
+                    },
                     WindowEvent::MouseWheel {
                         delta: MouseScrollDelta::LineDelta(x, y),
                         ..
                     } => {
                         mouse_controller.mouse_scroll(&mut comp, (x, y));
-                    }
+                    },
                     _ => (),
                 },
                 Event::MainEventsCleared => {
                     context.window().request_redraw();
-                }
+                },
                 Event::RedrawRequested(_) => {
                     let size = context.window().inner_size();
                     unsafe {
@@ -577,7 +579,7 @@ impl<'a, R: Render + 'static> App<'a, R> {
                     } else {
                         thread::sleep(Duration::from_millis(10));
                     }
-                }
+                },
                 _ => (),
             }
         })

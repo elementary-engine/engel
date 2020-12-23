@@ -83,7 +83,7 @@ impl<M: Model> Node<M> {
                     }
                 }
                 None
-            }
+            },
             Node::Comp(comp) if comp.id() == Some(id) => Some(self),
             _ => None,
         }
@@ -100,7 +100,7 @@ impl<M: Model> Node<M> {
                     }
                 }
                 None
-            }
+            },
             Node::Comp(comp) if comp.id() == Some(id) => Some(self),
             _ => None,
         }
@@ -120,7 +120,7 @@ impl<M: Model> Node<M> {
                     }
                     None
                 }
-            }
+            },
             _ => None,
         }
     }
@@ -139,7 +139,7 @@ impl<M: Model> Node<M> {
                     }
                     None
                 }
-            }
+            },
             _ => None,
         }
     }
@@ -155,7 +155,7 @@ impl<M: Model> Node<M> {
                     }
                 }
                 None
-            }
+            },
             _ => None,
         }
     }

@@ -1,8 +1,8 @@
 use std::{env, time::Duration};
 
 use engel::{
-    builder::*, Animate, ChangeView, Color, Comp, LineCap, LineJoin, Model, Node, PathCommand::*, Pct, Real, Shaped,
-    Stroke, SystemMessage, Transform, VirtualKeyCode,
+    builder::*, Animate, ChangeView, Color, LineCap, LineJoin, Model, Node, PathCommand::*, Pct, Real, Shaped, Stroke,
+    SystemMessage, Transform, VirtualKeyCode,
 };
 use engel_controller_glutin::App;
 use engel_render_pathfinder::PathfinderRender as Render;
@@ -251,7 +251,7 @@ impl Model for Game {
                 self.canvas.resize(width, height);
                 self.reset_docker();
                 ChangeView::Rebuild
-            }
+            },
             Msg::Draw(elapsed) => {
                 if self.is_transient() {
                     self.animate(elapsed);
@@ -262,21 +262,21 @@ impl Model for Game {
                         GameState::NextLevel => {
                             self.next_level();
                             ChangeView::Rebuild
-                        }
+                        },
                         _ => ChangeView::None,
                     }
                 }
-            }
+            },
             Msg::Scroll(delta) => {
                 self.canvas
                     .scale_factor
                     .set((self.canvas.scale_factor.val() + delta * 0.1).max(0.01));
                 ChangeView::Rebuild
-            }
+            },
             Msg::KeyDown(VirtualKeyCode::Backspace) => {
                 self.reset_level();
                 ChangeView::Rebuild
-            }
+            },
             Msg::KeyDown(code) => {
                 match code {
                     VirtualKeyCode::Left if !self.docker.is_transient() => self.move_docker(Direction::Left),
@@ -285,11 +285,11 @@ impl Model for Game {
                     VirtualKeyCode::Down if !self.docker.is_transient() => self.move_docker(Direction::Down),
                     VirtualKeyCode::Enter if self.state == GameState::LevelComplete => {
                         self.state = GameState::NextLevel
-                    }
+                    },
                     _ => (),
                 };
                 ChangeView::None
-            }
+            },
             _ => ChangeView::None,
         }
     }
@@ -310,12 +310,12 @@ impl Model for Game {
                     Cell::BoxOnPlace => {
                         cells.push(self.build_place(x, y));
                         boxes.push(self.build_box(row, col, x, y));
-                    }
+                    },
                     Cell::Docker => docker = Some(self.build_docker(x, y)),
                     Cell::DockerOnPlace => {
                         cells.push(self.build_place(x, y));
                         docker = Some(self.build_docker(x, y));
-                    }
+                    },
                     Cell::Place => cells.push(self.build_place(x, y)),
                     _ => (),
                 }
@@ -600,6 +600,6 @@ fn main() -> anyhow::Result<()> {
         .with_multisampling(8)
         .with_srgb(true)
         .with_font("Roboto-Regular", font_path)
-        .run(Comp::new(Game::create(())))
+        .run(Game::create(()))
         .map_err(Into::into)
 }
